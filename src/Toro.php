@@ -2,14 +2,16 @@
 
 class Toro
 {
-    public static function serve($routes)
+    public static function serve($routes, $route = '', $method = '')
     {
         ToroHook::fire('before_request', compact('routes'));
 
-        $request_method = strtolower($_SERVER['REQUEST_METHOD']);
+        $request_method = strtolower($method) ? : strtolower($_SERVER['REQUEST_METHOD']);
         $path_info = '/';
 
-        if (! empty($_SERVER['PATH_INFO'])) {
+        if ($route) {
+            $path_info = $route;
+        } elseif (! empty($_SERVER['PATH_INFO'])) {
             $path_info = $_SERVER['PATH_INFO'];
         } elseif (! empty($_SERVER['ORIG_PATH_INFO']) && $_SERVER['ORIG_PATH_INFO'] !== '/index.php') {
             $path_info = $_SERVER['ORIG_PATH_INFO'];
@@ -18,7 +20,7 @@ class Toro
                 $path_info = (strpos($_SERVER['REQUEST_URI'], '?') > 0) ? strstr($_SERVER['REQUEST_URI'], '?', true) : $_SERVER['REQUEST_URI'];
             }
         }
-        
+
         $discovered_handler = null;
         $regex_matches = array();
 
@@ -76,6 +78,33 @@ class Toro
         }
 
         ToroHook::fire('after_request', compact('routes', 'discovered_handler', 'request_method', 'regex_matches', 'result'));
+    }
+
+    public static function getClass($path, $routes)
+    {
+
+        $discovered_handler = null;
+
+        if (isset($routes[$path])) {
+            $discovered_handler = $routes[$path];
+        } else {
+            if ($routes) {
+                $tokens = array(
+                    ':string' => '([a-zA-Z]+)',
+                    ':number' => '([0-9]+)',
+                    ':alpha' => '([a-zA-Z0-9-_]+)'
+                );
+                foreach ($routes as $pattern => $handler_name) {
+                    $pattern = strtr($pattern, $tokens);
+                    if (preg_match('#^/?' . $pattern . '/?$#', $path, $matches)) {
+                        $discovered_handler = $handler_name;
+                        break;
+                    }
+                }
+            }
+        }
+
+        return $discovered_handler;
     }
 
     private static function is_xhr_request()
