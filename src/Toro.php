@@ -7,6 +7,7 @@ class Toro
         ToroHook::fire('before_request', compact('routes'));
 
         $request_method = strtolower($method) ? : strtolower($_SERVER['REQUEST_METHOD']);
+        $request_method = $request_method == 'head' ? 'get' : $request_method;
         $path_info = '/';
 
         if ($route) {
